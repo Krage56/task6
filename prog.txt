@@ -1,0 +1,5 @@
+SWITCH (5) {
+    CASE 1: print(1);
+    CASE 5: print(5); BREAK;
+    DEFAULT: print(10); BREAK;
+}
