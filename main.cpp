@@ -1,8 +1,8 @@
 #include <cstdio>
 #include <cstring>
-#include <stdlib.h>
+#include <cstdlib>
 #include <climits>
-
+#include "syntax_analyzer.h"
 #define buf_size 1024+1
 char buf[buf_size];
 
@@ -23,7 +23,7 @@ enum TOKENS{
 
 FILE * ptrFile = fopen("../prog.txt" , "r");
 
-long symbol;
+int symbol;
 
 int t = ' ';
 long scan(){
@@ -98,17 +98,145 @@ long scan(){
                     return i;
                 }
             }
-            printf("Unresolved operator %s", buf);
+            printf("Unresolved operator %s\n", buf);
             return EOF;
         }
     }
 }
 
-int main() {
-    int tmp;
-    while ((tmp = scan()) != EOF){
-        continue;
+void payload(){
+    printf("payload -> ");
+    char loc_buf[buf_size];//Нужно для вывода ошибки
+    while (symbol == SWITCH || symbol == PRINT || symbol == BREAK){
+        if (symbol == SWITCH){
+            statement();
+        }
+        else if (symbol == PRINT){
+            strcpy(loc_buf, buf);
+            symbol = scan();
+            if (symbol != LBRACE){
+                printf("Incorrect expression: must be left brace, %s received\n", loc_buf);
+                return;
+            }
+            strcpy(loc_buf, buf);
+            symbol = scan();
+            if (symbol != INT){
+                printf("Incorrect expression: must be integer value, %s received\n", loc_buf);
+                return;
+            }
+            strcpy(loc_buf, buf);
+            symbol = scan();
+            if (symbol != RBRACE){
+                printf("Incorrect expression: must be right brace, %s received\n", loc_buf);
+                return;
+            }
+            strcpy(loc_buf, buf);
+            symbol = scan();
+            if (symbol != SEMI){
+                printf("Incorrect expression: must be semicolon, %s received\n", loc_buf);
+                return;
+            }
+        }
+        else{
+            strcpy(loc_buf, buf);
+            symbol = scan();
+            if (symbol != SEMI) {
+                printf("Incorrect expression: must be semicolon, %s received\n", loc_buf);
+                return;
+            }
+        }
+        symbol = scan();
     }
+}
+
+void st_case(){
+    printf("st_case -> ");
+    char loc_buf[buf_size];//Нужно для вывода ошибки
+
+    strcpy(loc_buf, buf);
+    symbol = scan();
+    if (symbol != INT){
+        printf("Incorrect expression: must be integer value, %s received\n", loc_buf);
+        return;
+    }
+    strcpy(loc_buf, buf);
+    symbol = scan();
+    if (symbol != COLON){
+        printf("Incorrect expression: must be colon, %s received\n", loc_buf);
+        return;
+    }
+    symbol = scan();
+    payload();
+}
+
+void st_default(){
+    printf("default -> ");
+    char loc_buf[buf_size];//Нужно для вывода ошибки
+    strcpy(loc_buf, buf);
+    symbol = scan();
+    if (symbol != COLON){
+        printf("Incorrect expression: must be colon, %s received\n", loc_buf);
+        return;
+    }
+    symbol = scan();
+    payload();
+}
+
+void case_arr(){
+    printf("case_arr -> ");
+    while (symbol == CASE){
+        st_case();
+    }
+    if (symbol == DEFAULT){
+        st_default();
+    }
+}
+
+void statement(){
+    printf("statement aka st_switch -> ");
+    char loc_buf[buf_size];//Нужно для вывода ошибки
+    if (symbol == SWITCH){
+        strcpy(loc_buf, buf);
+        symbol = scan();
+        if (symbol != LBRACE){
+            printf("Incorrect expression: must be left brace, %s received\n", loc_buf);
+            return;
+        }
+
+        strcpy(loc_buf, buf);
+        symbol = scan();
+        if (symbol != INT){
+            printf("Incorrect expression: must be integer value, %s received\n", loc_buf);
+            return;
+        }
+
+        strcpy(loc_buf, buf);
+        symbol = scan();
+        if (symbol != RBRACE){
+            printf("Incorrect expression: must be right brace, %s received\n", loc_buf);
+            return;
+        }
+
+        strcpy(loc_buf, buf);
+        symbol = scan();
+        if (symbol != FLBRACE){
+            printf("Incorrect expression: must be left figure brace, %s received\n", loc_buf);
+            return;
+        }
+
+        symbol = scan();
+        case_arr();
+        if (symbol != FRBRACE){
+            printf("Incorrect expression: must be right figure brace to close statement\n");
+            return;
+        }
+
+    }
+}
+
+int main() {
+    symbol = scan();
+    statement();
     fclose(ptrFile);
     return 0;
 }
