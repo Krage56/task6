@@ -3,7 +3,8 @@
 #include <cstdlib>
 #include <climits>
 #include "syntax_analyzer.h"
-#define buf_size 1024+1
+#include "semantic_executor.h"
+#define buf_size 1024 + 1
 
 //Сюда записывается считываемая лексема
 char buf[buf_size];
@@ -28,6 +29,9 @@ FILE * ptrFile = fopen("../prog.txt" , "r");
 int symbol;
 
 int t = ' ';
+
+StStack* stack = initStStack();
+
 long scan(){
     enum TOKENS current_token;
     while(1){
@@ -119,10 +123,12 @@ long scan(){
 }
 
 void payload(){
-    printf("payload -> ");
-
     while (symbol == SWITCH || symbol == PRINT || symbol == BREAK){
         if (symbol == SWITCH){
+            //Если на вершине стека есть свитч с access == 1, то
+            //добавляем на вершину новый свитч с access == 0, иначе с access == -1
+            SwitchData* current = get(stack);
+            add(stack, initSwitchData(current->access == 1 ? 0: -1));
             statement();
         }
         else if (symbol == PRINT){
@@ -137,6 +143,9 @@ void payload(){
                 printf("Incorrect expression: must be integer value, %s received\n", buf);
                 return;
             }
+            //Если у свитча на вершине стека access == 1, то запоминаем
+            //число из буфера в локальный буфер
+            int num = strtol(buf, NULL, 0);
 
             symbol = scan();
             if (symbol != RBRACE){
@@ -149,10 +158,21 @@ void payload(){
                 printf("Incorrect expression: must be semicolon, %s received\n", buf);
                 return;
             }
+            //Если у свитча на вершине стека access == 1, то выводим
+            //число из локального буфера
+            SwitchData* current = get(stack);
+            if (current->access == 1){
+                printf("%d\n", num);
+            }
         }
+        //нашли break
         else{
-
             symbol = scan();
+            //Если у свитча на вершине стека access == 1, то меняем на -1
+            SwitchData* tmp = get(stack);
+            if (tmp->access == 1){
+                tmp->access = -1;
+            }
             if (symbol != SEMI) {
                 printf("Incorrect expression: must be semicolon, %s received\n", buf);
                 return;
@@ -163,12 +183,19 @@ void payload(){
 }
 
 void st_case(){
-    printf("st_case -> ");
-
     symbol = scan();
     if (symbol != INT){
         printf("Incorrect expression: must be integer value, %s received\n", buf);
         return;
+    }
+    //Взяли с вершины стека свитч, дописали в него ещё один обрабатываемый кейс
+    SwitchData* current_switch = get(stack);
+    add_new_case(current_switch, strtol(buf, NULL, 0));
+    //Сравнили последний кейс с условием свичта
+    //Если условие кейса совпало с условием свитча и access == 0, то access = 1
+    if ((current_switch->condition == current_switch->case_cond_arr[current_switch->case_cond_size - 1]) &&
+    (current_switch->access == 0)){
+        current_switch->access = 1;
     }
 
     symbol = scan();
@@ -181,19 +208,21 @@ void st_case(){
 }
 
 void st_default(){
-    printf("default -> ");
 
     symbol = scan();
     if (symbol != COLON){
         printf("Incorrect expression: must be colon, %s received\n", buf);
         return;
     }
+    //Если у свитча на вершине стека access == 0, меняем на 1
+    if (get(stack)->access == 0){
+        get(stack)->access = 1;
+    }
     symbol = scan();
     payload();
 }
 
 void case_arr(){
-    printf("case_arr -> ");
     while (symbol == CASE){
         st_case();
     }
@@ -203,9 +232,8 @@ void case_arr(){
 }
 
 void statement(){
-    printf("statement aka st_switch -> ");
-    char loc_buf[buf_size];
     if (symbol == SWITCH){
+        int num = 0;
         symbol = scan();
         if (symbol != LBRACE){
             printf("Incorrect expression: must be left brace, %s received\n", buf);
@@ -218,7 +246,9 @@ void statement(){
             return;
         }
         //Если успешно считался INT, то в буфере лежит число
-        strcpy(loc_buf, buf);
+        num = strtol(buf, NULL, 0);
+        get(stack)->condition = num;
+
         symbol = scan();
         if (symbol != RBRACE){
             printf("Incorrect expression: must be right brace, %s received\n", buf);
@@ -237,13 +267,18 @@ void statement(){
             printf("Incorrect expression: must be right figure brace to close statement\n");
             return;
         }
-
+        //если считалась закрывающая фигурная скобка, то switch на вершине стека выполнен
+        free_switch_data(pop(stack));
     }
 }
 
+
 int main() {
     symbol = scan();
+    add(stack, initSwitchData());
     statement();
+
     fclose(ptrFile);
+    free_stack(stack);
     return 0;
 }

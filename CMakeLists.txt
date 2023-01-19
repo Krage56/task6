@@ -3,4 +3,4 @@ project(Scan_RecurcePredict)
 
 set(CMAKE_CXX_STANDARD 98)
 
-add_executable(Scan_RecurcePredict main.cpp syntax_analyzer.h)
+add_executable(Scan_RecurcePredict main.cpp syntax_analyzer.h semantic_executor.h semantic_executor.cpp)
