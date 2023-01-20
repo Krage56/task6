@@ -285,7 +285,11 @@ int main() {
     symbol = scan();
     add(stack, initSwitchData());
     statement();
-
+    //Проверить, осталось ли что-то. Если осталось, то ошибка
+    symbol = scan();
+    if (symbol != EOF){
+        printf("ERROR: Unpermitted symbols detected: %s\n", buf);
+    }
     fclose(ptrFile);
     free_stack(stack);
     return 0;
